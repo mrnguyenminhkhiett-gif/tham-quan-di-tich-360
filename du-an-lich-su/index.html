@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tham Quan Ảo 360° - Di Tích Lịch Sử Địa Phương</title>
+
+    <!-- Nhúng thư viện Pannellum (CSS & JS) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"/>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        /* Khung chứa không gian 360 độ toàn màn hình */
+        #panorama {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Bảng điều khiển thông tin & Audio nổi ở phía dưới */
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 500px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            padding: 15px 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .scene-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+
+        .scene-desc {
+            font-size: 0.85rem;
+            color: #ddd;
+            margin-bottom: 12px;
+        }
+
+        audio {
+            width: 100%;
+            height: 36px;
+            outline: none;
+            border-radius: 8px;
+        }
+
+        /* Nút chọn nhanh khu vực ở góc trên */
+        .quick-nav {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .nav-btn {
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            background: #ffd700;
+            color: #000;
+            font-weight: bold;
+        }
+
+        /* Gỡ nền mặc định của Pannellum để nút bám chặt tọa độ khi xoay */
+        .pnlm-hotspot-base.nut-chuyen-canh {
+            width: 58px !important;
+            height: 58px !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            cursor: pointer;
+        }
+
+        /* Hình tròn nút bấm chắc chắn, hiện đại */
+        .pnlm-hotspot-base.nut-chuyen-canh::before {
+            content: "➤";
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ffd700, #ff9900);
+            border: 3px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.6);
+            color: #141414;
+            font-size: 20px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-left: 3px;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        /* Phóng nhẹ khi rê chuột hoặc chạm vào */
+        .pnlm-hotspot-base.nut-chuyen-canh:hover::before {
+            transform: scale(1.1);
+            box-shadow: 0 8px 24px rgba(255, 200, 0, 0.65);
+        }
+
+        /* Nhãn tên điểm đến gọn gàng, bám sát nút */
+        .pnlm-hotspot-base.nut-chuyen-canh span {
+            visibility: visible !important;
+            opacity: 1 !important;
+            top: 64px !important;
+            bottom: auto !important;
+            left: 50% !important;
+            right: auto !important;
+            transform: translateX(-50%) !important;
+            margin: 0 !important;
+            background: rgba(18, 18, 18, 0.88) !important;
+            color: #fff !important;
+            padding: 5px 11px !important;
+            border-radius: 999px !important;
+            font-size: 12.5px !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            border: 1px solid rgba(255, 215, 0, 0.45) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4) !important;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menu chuyển nhanh -->
+    <div class="quick-nav">
+        <button class="nav-btn active" onclick="chuyenCanh('canh1')">1. Cổng Tam Quan</button>
+        <button class="nav-btn" onclick="chuyenCanh('canh2')">2. Sân Chính</button>
+        <button class="nav-btn" onclick="chuyenCanh('canh3')">3. Chính Điện</button>
+    </div>
+
+    <!-- Màn hình hiển thị 360 độ -->
+    <div id="panorama"></div>
+
+    <!-- Hộp phát audio thuyết minh -->
+    <div class="control-panel">
+        <div class="scene-title" id="tieu-de">Khu vực 1: Cổng Tam Quan</div>
+        <div class="scene-desc" id="mo-ta">Bấm nút Play bên dưới để nghe thuyết minh lịch sử khu vực này.</div>
+        <audio id="trinh-phat-audio" controls>
+            <source src="audio/thuyetminh1.mp3" type="audio/mpeg">
+            Trình duyệt của bạn không hỗ trợ phát âm thanh.
+        </audio>
+    </div>
+
+    <script>
+        // Dữ liệu mô tả & file âm thanh cho từng không gian
+        const duLieuKhongGian = {
+            canh1: {
+                tieuDe: "Khu vực 1: Cổng Tam Quan",
+                moTa: "Kiến trúc cổng vào cổ kính mang đậm dấu ấn lịch sử địa phương.",
+                audio: "audio/thuyetminh1.mp3"
+            },
+            canh2: {
+                tieuDe: "Khu vực 2: Sân Chính",
+                moTa: "Không gian sinh hoạt văn hóa và tổ chức các nghi lễ truyền thống.",
+                audio: "audio/thuyetminh2.mp3"
+            },
+            canh3: {
+                tieuDe: "Khu vực 3: Chính Điện",
+                moTa: "Nơi thờ tự trang nghiêm lưu giữ nhiều hiện vật quý giá.",
+                audio: "audio/thuyetminh3.mp3"
+            }
+        };
+
+        // Khởi tạo trình xem 360 độ Pannellum
+        const viewer = pannellum.viewer('panorama', {
+            "default": {
+                "firstScene": "canh1",
+                "author": "Nhóm Học Sinh Lớp 10",
+                "sceneFadeDuration": 600,
+                "autoLoad": true,
+                "hotSpotDebug": true // Bật để bấm chuột lên ảnh xem tọa độ Pitch/Yaw trong Console (F12)
+            },
+
+            "scenes": {
+                // KHÔNG GIAN 1
+                "canh1": {
+                    "title": "Cổng Tam Quan",
+                    "hfov": 110,
+                    "pitch": 0,
+                    "yaw": 0,
+                    "type": "equirectangular",
+                    "panorama": "images/canh1.png",
+                    "hotSpots": [
+                        {
+                            "pitch": -5,
+                            "yaw": 10,
+                            "type": "scene",
+                            "text": "Đi tiếp vào Sân Chính",
+                            "sceneId": "canh2",
+                            "cssClass": "nut-chuyen-canh"
+                        }
+                    ]
+                },
+
+                // KHÔNG GIAN 2
+                "canh2": {
+                    "title": "Sân Chính",
+                    "hfov": 110,
+                    "pitch": 0,
+                    "yaw": 0,
+                    "type": "equirectangular",
+                    "panorama": "images/canh2.png",
+                    "hotSpots": [
+                        {
+                            "pitch": -5,
+                            "yaw": 0,
+                            "type": "scene",
+                            "text": "Tiến vào Chính Điện",
+                            "sceneId": "canh3",
+                            "cssClass": "nut-chuyen-canh"
+                        },
+                        {
+                            "pitch": -5,
+                            "yaw": 180,
+                            "type": "scene",
+                            "text": "Quay lại Cổng Tam Quan",
+                            "sceneId": "canh1",
+                            "cssClass": "nut-chuyen-canh"
+                        }
+                    ]
+                },
+
+                // KHÔNG GIAN 3
+                "canh3": {
+                    "title": "Chính Điện",
+                    "hfov": 110,
+                    "pitch": 0,
+                    "yaw": 0,
+                    "type": "equirectangular",
+                    "panorama": "images/canh3.jpg",
+                    "hotSpots": [
+                        {
+                            "pitch": -5,
+                            "yaw": 180,
+                            "type": "scene",
+                            "text": "Quay ra Sân Chính",
+                            "sceneId": "canh2",
+                            "cssClass": "nut-chuyen-canh"
+                        }
+                    ]
+                }
+            }
+        });
+
+        // Lắng nghe sự kiện mỗi khi chuyển sang không gian mới
+        viewer.on('scenechange', function(sceneId) {
+            capNhatGiaoDien(sceneId);
+        });
+
+        // Hàm chuyển cảnh khi bấm nút menu góc trên
+        function chuyenCanh(sceneId) {
+            viewer.loadScene(sceneId);
+        }
+
+        // Hàm cập nhật chữ và file âm thanh tương ứng với cảnh hiện tại
+        function capNhatGiaoDien(sceneId) {
+            const info = duLieuKhongGian[sceneId];
+            if (!info) return;
+
+            document.getElementById('tieu-de').innerText = info.tieuDe;
+            document.getElementById('mo-ta').innerText = info.moTa;
+
+            const audioPlayer = document.getElementById('trinh-phat-audio');
+            audioPlayer.pause();
+            audioPlayer.src = info.audio;
+            audioPlayer.load();
+
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            if(sceneId === 'canh1') buttons[0].classList.add('active');
+            if(sceneId === 'canh2') buttons[1].classList.add('active');
+            if(sceneId === 'canh3') buttons[2].classList.add('active');
+        }
+    </script>
+</body>
+</html>
